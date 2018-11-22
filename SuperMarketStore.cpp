@@ -3,6 +3,8 @@
 #include <iomanip>
 #include <cstring>
 #include <ctime>
+#include <stdlib.h>
+#include <conio.h>
 
 using namespace std;
 
@@ -16,7 +18,7 @@ tm *getTime()
 class product
 {
 	int product_num;
-	string product_name;
+	char product_name[50];
 	int quantity;
 	float sell_p;
 	float buy_p;
@@ -33,12 +35,12 @@ class product
 	product()
 	{
 		product_num = 0;
-		product_name = "\0";
+		product_name[0] = '\0';
 	}
-	product(int p_num, string name, int quantity, float sell_p, float buy_p, int gst)
+	product(int p_num, char *name, int quantity, float sell_p, float buy_p, int gst)
 	{
 		this->product_num = p_num;
-		this->product_name = name;
+		strcpy(this->product_name, name);
 		this->quantity = quantity;
 		this->sell_p = sell_p;
 		this->buy_p = buy_p;
@@ -47,17 +49,20 @@ class product
 	}
 	void get_data()
 	{
+		float temp_sell_p;
 		cout << "Enter Serial Number: ";
 		cin >> this->product_num;
 		cout << "Enter Product Name(MAX LENGTH: 20): ";
-		cin>>this->product_name;
+		cin.ignore();
+		cin.get(this->product_name, 20);
 		cout << "Enter Quantity: ";
 		cin >> this->quantity;
 		cout << "Enter Buying Price: ";
 		cin >> this->buy_p;
 		cout << "Enter GST: ";
 		cin >> this->gst;
-		cout << "Enter Selling Price: (Selling Price should be greater than " << (this->buy_p + (this->gst / 100) * this->buy_p) << " to turn profit)";
+		temp_sell_p = buy_p * ((gst * .01) + 1);
+		cout << "Enter Selling Price: (Selling Price should be greater than " << temp_sell_p << " to turn profit)";
 		cin >> this->sell_p;
 		calculate();
 	}
@@ -81,7 +86,7 @@ class product
 	{
 		return this->product_num;
 	}
-	string getName()
+	char *getName()
 	{
 		return this->product_name;
 	}
@@ -111,92 +116,11 @@ class product
 	}
 	bool isValid()
 	{
-		if (product_num == 0 || product_name == "\0")
+		if (product_num == 0 || product_name[0] == '\0')
 			return false;
 		return true;
 	}
-	void save()
-	{
-		ofstream fout;
-		fout.open("product.dat", ios::binary | ios::app);
-		if (!fout)
-		{
-			cout << "Failed To Open File!!\nExiting..";
-			exit(0);
-		}
-		else
-		{
-			fout.write((char *)this, sizeof(product));
-		}
-		fout.close();
-	}
-	void update()
-	{
-		int s_num = this->product_num;
-		fstream file;
-		file.open("product.dat", ios::binary | ios::ate | ios::in | ios::out);
-		if (!file)
-		{
-			cout << "Failed to open file!!!\nExiting...." << endl;
-			exit(0);
-		}
-		else
-		{
-			file.seekg(0);
-			file.read((char *)this, sizeof(product));
-			while (!file.eof())
-			{
-				if (s_num == this->product_num)
-				{
-					cout << "Product Detail: ";
-					this->show_product();
-					cout << "Enter the Values: " << endl;
-					cout << "Note: IF DONT WISH TO CHANGE KINDLY ENTER SAME VALUE.";
-					this->get_data();
-					file.seekp(-(sizeof(product)),ios::cur);
-					file.write((char *)this, sizeof(product));
-					break;
-				}
-				file.read((char *)this, sizeof(product));
-			}
-		}
-		file.close();
-	}
-	void remove_it()
-	{
-		int s_num = this->product_num;
-		ofstream fout;
-		ifstream fin;
-		fin.open("product.dat", ios::in | ios::binary);
-		if (!fin)
-		{
-			cout << "Failed to open file!!\nExiting...";
-			exit(0);
-		}
-		else
-		{
-			fout.open("temp.dat", ios::binary | ios::out);
-			fin.read((char *)this, sizeof(product));
-			while (!fin.eof())
-			{
-				if (!(s_num == this->product_num))
-				{
-					fout.write((char *)this, sizeof(product));
-				}
-				fin.read((char *)this, sizeof(product));
-			}
-			fin.close();
-			fout.close();
-			if(remove("product.dat") == 0)
-				cout<<"Sucessfully Deleted file\n";
-			else
-				cout<<"File Removal Failed\n";
-			if(rename("temp.dat", "product.dat") == 0)
-				cout<<"Successfully Renamed\n";
-			else
-				cout<<"Failed to Rename\n";
-		}
-	}
+	friend product getProductBySerial(int);
 };
 
 class Item
@@ -206,13 +130,24 @@ class Item
 	string product_name;
 	int quantity;
 	float total;
-	Item(){}
+	tm *t;
+	Item() {}
 	Item(int serial, string product_name, int quantity, float total)
 	{
 		this->serial = serial;
 		this->product_name = product_name;
 		this->quantity = quantity;
 		this->total = total;
+		this->t = getTime();
+	}
+	void show_product()
+	{
+		cout << "\nItem Detail\n";
+		cout << "serial: " << serial << "\n"
+			 << "Product Name: " << product_name << "\n"
+			 << "Quantity: " << quantity << "\n"
+			 << "Total: " << total << "\n"
+			 << "Time Stamp: " << asctime(t) << "\n";
 	}
 };
 
@@ -236,47 +171,79 @@ class ItemStack
 	{
 		return arr[top--];
 	}
+	void showAll()
+	{
+		cout << "\n\n";
+		for (int i = 0; i <= top; i++)
+		{
+			arr[i].show_product();
+			cout << "\n";
+		}
+	}
 };
 
 product getProductBySerial(int serial)
 {
 	ifstream fin;
-	fin.open("product.dat", ios::in);
-	product p;
-	fin.read((char *)&p, sizeof(p));
-	while (!fin.eof())
+	fin.open("product.dat", ios::in | ios::binary);
+	if (!fin)
 	{
-		if (serial == p.getSerialNumber())
+		cout << "Failed to open file!!";
+		exit(0);
+	}
+	else
+	{
+		product p;
+		fin.read((char *)&p, sizeof(p));
+		while (!fin.eof())
 		{
-			return p;
+			if (serial == p.product_num)
+			{
+				fin.close();
+				return p;
+			}
+			cout << p.product_num << " ";
+			fin.read((char *)&p, sizeof(p));
 		}
+		fin.close();
 	}
 	return product();
 }
 
+void showProduct(int serialNumber)
+{
+	product p = getProductBySerial(serialNumber);
+	p.show_product();
+}
+
 void AddProduct()
 {
+	ofstream file;
+	file.open("product.dat", ios::out | ios::app | ios::binary);
 	product p;
 	p.get_data();
 	if (p.isValid())
-		p.save();
+	{
+		file.write((char *)&p, sizeof(p));
+	}
+	file.close();
 }
 
 void EditProduct(int serial_num)
 {
 	bool found = false;
-	fstream fin;
+	fstream file;
 	product p;
-	fin.open("product.dat", ios::in | ios::out | ios::binary);
-	if (!fin)
+	file.open("product.dat", ios::in | ios::out | ios::binary);
+	if (!file)
 	{
 		cout << "File Not Found Exit!!\nExiting....";
 		exit(0);
 	}
 	else
 	{
-		fin.read((char *)&p, sizeof(p));
-		while (!fin.eof())
+		file.read((char *)&p, sizeof(p));
+		while (!file.eof())
 		{
 			if (p.getSerialNumber() == serial_num)
 			{
@@ -285,25 +252,79 @@ void EditProduct(int serial_num)
 			}
 			else
 			{
-				fin.read((char *)&p, sizeof(p));
+				file.read((char *)&p, sizeof(p));
 			}
 		}
 		if (found)
 		{
-			p.update();
+			file.clear();
+			file.seekp(-(sizeof(product)), ios::cur);
+			p.show_product();
+			cout << "Enter the Values: " << endl;
+			cout << "Note: IF DONT WISH TO CHANGE KINDLY ENTER SAME VALUE.";
+			p.get_data();
+			file.write((char *)&p, sizeof(p));
 		}
 		else
 		{
 			cout << "Product Doesn't Exist!!!!";
 		}
 	}
-	fin.close();
+	file.close();
+}
+
+void confirm_sell(int serial_num, int quantity)
+{
+	bool found = false;
+	fstream file;
+	product p;
+	file.open("product.dat", ios::in | ios::out | ios::binary);
+	if (!file)
+	{
+		cout << "File Not Found Exit!!\nExiting....";
+		exit(0);
+	}
+	else
+	{
+		file.read((char *)&p, sizeof(p));
+		while (!file.eof())
+		{
+			if (p.getSerialNumber() == serial_num)
+			{
+				found = true;
+				break;
+			}
+			else
+			{
+				file.read((char *)&p, sizeof(p));
+			}
+		}
+		if (found)
+		{
+			if (p.remove_product(quantity))
+			{
+				file.clear();
+				file.seekp(-(sizeof(product)), ios::cur);
+				file.write((char *)&p, sizeof(p));
+			}
+			else
+			{
+				cout << "Required Product Quantity Is Not Sufficient.." << endl;
+			}
+		}
+		else
+		{
+			cout << "Product Doesn't Exist!!!!";
+		}
+	}
+	file.close();
 }
 
 void RemoveProduct(int serial_num)
 {
 	bool found = false;
 	ifstream fin;
+	ofstream fout;
 	fin.open("product.dat", ios::in | ios::binary);
 	if (!fin)
 	{
@@ -325,14 +346,28 @@ void RemoveProduct(int serial_num)
 		}
 		if (found)
 		{
-			p.remove_it();
+			fin.clear();
+			fin.seekg(0);
+			fout.open("temp.dat", ios::binary | ios::out);
+			fin.read((char *)&p, sizeof(p));
+			while (!fin.eof())
+			{
+				if (!(p.getSerialNumber() == serial_num))
+				{
+					fout.write((char *)&p, sizeof(p));
+				}
+				fin.read((char *)&p, sizeof(p));
+			}
+			fin.close();
+			fout.close();
+			remove("product.dat");
+			rename("temp.dat", "product.dat");
 		}
 		else
 		{
 			cout << "Product Doesn't Exists!!!";
 		}
 	}
-	fin.close();
 }
 
 void makeSale(Item i)
@@ -341,8 +376,7 @@ void makeSale(Item i)
 	fout.open("saleLedger.dat", ios::binary | ios::app);
 	if (fout)
 	{
-		tm *t = getTime();
-		fout.write((char *)t, sizeof(*t));
+		confirm_sell(i.serial, i.quantity);
 		fout.write((char *)&i, sizeof(i));
 		fout.close();
 	}
@@ -357,10 +391,8 @@ void ShowLedger()
 {
 	ifstream fin;
 	fin.open("saleLedger.dat", ios::binary);
-	tm *t = nullptr;
-	Item *i = nullptr;
-	fin.read((char *)&t, sizeof(*t));
-	fin.read((char *)&i, sizeof(*i));
+	Item i;
+	fin.read((char *)&i, sizeof(i));
 	if (!fin)
 	{
 		cout << "Unable to open file!!!\n";
@@ -368,18 +400,17 @@ void ShowLedger()
 	}
 	while (!fin.eof())
 	{
-		cout << "\n\nSale On " << t->tm_hour
-			 << ":" << t->tm_min
-			 << ":" << t->tm_sec
-			 << "  " << t->tm_mday
-			 << "-" << t->tm_mon
-			 << "-" << t->tm_year << "\n";
-		cout << "Item No: " << i->serial << "\n";
-		cout << "Item Name: " << i->product_name << "\n";
-		cout << "Quantity: " << i->quantity << "\n";
-		cout << "Total: " << i->total << "\n";
-		fin.read((char *)&t, sizeof(*t));
-		fin.read((char *)&i, sizeof(*i));
+		cout << "\n\nSale On " << i.t->tm_hour
+			 << ":" << i.t->tm_min
+			 << ":" << i.t->tm_sec
+			 << "  " << i.t->tm_mday
+			 << "-" << i.t->tm_mon
+			 << "-" << i.t->tm_year << "\n";
+		cout << "Item No: " << i.serial << "\n";
+		cout << "Item Name: " << i.product_name << "\n";
+		cout << "Quantity: " << i.quantity << "\n";
+		cout << "Total: " << i.total << "\n";
+		fin.read((char *)&i, sizeof(i));
 	}
 	fin.close();
 }
@@ -387,29 +418,34 @@ void ShowLedger()
 void showAllProducts()
 {
 	ifstream fin;
-	fin.open("product.dat", ios::binary|ios::in);
+	fin.open("product.dat", ios::binary | ios::in);
+	if (!fin)
+	{
+		cout << "file not opened\n"
+			 << endl;
+		exit(0);
+	}
 	product p;
 	cout << "Product Inventory" << endl;
 	cout << "S.No\tName\t\t\tQuantity\tGST\tTotal\t\t   Profit" << endl;
-	fin.seekg(0);
-	fin.read((char *)&p, sizeof(p));
+	fin.read((char *)&p, sizeof(product));
 	while (!fin.eof())
 	{
 		cout << left << setw(8) << p.getSerialNumber()
 			 << setw(24) << p.getName() << setw(16) << p.getQuantity()
 			 << setw(8) << p.getGST() << setw(19) << fixed << setprecision(3) << p.getTotal()
 			 << p.getProfit() << endl;
-		fin.read((char *)&p, sizeof(p));
+		fin.read((char *)&p, sizeof(product));
 	}
 	fin.close();
-	cout<<"\nfile closed done\n";
 }
 
 int AdminMenu()
 {
 	int ch;
-	cout << "\n\nAdministrator Menu\n1.Show All Products\n2.Add Product\n3.Edit Product\n4.Delete Product\n5. Return To Main Menu\nEnter Your Choice: ";
+	cout << "\n\nAdministrator Menu\n1.Show All Products\n2.Add Product\n3.Edit Product\n4.Delete Product\n5.Product Detail\n6.Show Ledger\n7. Return To Main Menu\nEnter Your Choice: ";
 	cin >> ch;
+	system("CLS");
 	return ch;
 }
 
@@ -417,9 +453,11 @@ void customerMenu()
 {
 	Item *I, i;
 	ItemStack IStack;
+	product p;
 	int serial, q;
 	float total;
 	char c = 'y';
+	system("CLS");
 	showAllProducts();
 	while (c == 'y' || c == 'Y')
 	{
@@ -427,20 +465,26 @@ void customerMenu()
 		cin >> serial;
 		cout << "Enter Quantity: ";
 		cin >> q;
-		product p = getProductBySerial(serial);
+		p = getProductBySerial(serial);
+		cout << "\n"
+			 << p.getName() << "\n";
 		if (!p.isValid())
 		{
 			cout << "Product Doesn't Exist!!";
 		}
 		else
 		{
+			cout << "\n"
+				 << p.getName() << " added to cart.\n";
 			total = p.getSellPrice() * q;
 			I = new Item(serial, p.getName(), q, total);
 			IStack.push(*I);
 		}
-		cout << "Want Add More Products: ";
+		cout << "Want Add More Products(y/n): ";
 		cin >> c;
 	}
+	cout << "Out of WHile" << endl;
+	IStack.showAll();
 	cout << "Sr.No\tProduct Name\t\tQuantity\tTotal" << endl;
 
 	while (IStack.top != -1)
@@ -458,6 +502,7 @@ int menu()
 	cout << "1.Admin\n2.Customer\n3.Exit\n";
 	cout << "Enter Your Choice: ";
 	cin >> ch;
+	system("CLS");
 	return ch;
 }
 
@@ -470,7 +515,8 @@ main_menu:
 		switch (menu())
 		{
 		case 1:
-			while(1){
+			while (1)
+			{
 				switch (AdminMenu())
 				{
 				case 1:
@@ -490,6 +536,13 @@ main_menu:
 					RemoveProduct(serial);
 					break;
 				case 5:
+					cout << "Enter Serial Number: ";
+					cin >> serial;
+					showProduct(serial);
+				case 6:
+					ShowLedger();
+					break;
+				case 7:
 					goto main_menu;
 					break;
 				default:
