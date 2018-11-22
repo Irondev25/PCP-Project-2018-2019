@@ -4,7 +4,6 @@
 #include <cstring>
 #include <ctime>
 #include <stdlib.h>
-#include <conio.h>
 
 using namespace std;
 
@@ -79,7 +78,7 @@ class product
 	{
 		if (x > this->quantity)
 			return false;
-		this->quantity -= x;
+		this->quantity = this->quantity - x;
 		return true;
 	}
 	int getSerialNumber()
@@ -127,18 +126,18 @@ class Item
 {
   public:
 	int serial;
-	string product_name;
+	char product_name[50];
 	int quantity;
 	float total;
-	tm *t;
+	tm t;
 	Item() {}
-	Item(int serial, string product_name, int quantity, float total)
+	Item(int serial, char *product_name, int quantity, float total)
 	{
 		this->serial = serial;
-		this->product_name = product_name;
+		strcpy(this->product_name, product_name);
 		this->quantity = quantity;
 		this->total = total;
-		this->t = getTime();
+		this->t = *getTime();
 	}
 	void show_product()
 	{
@@ -147,7 +146,7 @@ class Item
 			 << "Product Name: " << product_name << "\n"
 			 << "Quantity: " << quantity << "\n"
 			 << "Total: " << total << "\n"
-			 << "Time Stamp: " << asctime(t) << "\n";
+			 << "Time Stamp: " << asctime(&t) << "\n";
 	}
 };
 
@@ -202,18 +201,20 @@ product getProductBySerial(int serial)
 				fin.close();
 				return p;
 			}
-			cout << p.product_num << " ";
 			fin.read((char *)&p, sizeof(p));
 		}
 		fin.close();
+		return product();
 	}
-	return product();
 }
 
 void showProduct(int serialNumber)
 {
 	product p = getProductBySerial(serialNumber);
-	p.show_product();
+	if (p.isValid())
+		p.show_product();
+	else
+		cout << "\nProduct Doesn't Exist!!!";
 }
 
 void AddProduct()
@@ -301,16 +302,12 @@ void confirm_sell(int serial_num, int quantity)
 		}
 		if (found)
 		{
+			file.clear();
+			file.seekp(-(sizeof(product)), ios::cur);
 			if (p.remove_product(quantity))
-			{
-				file.clear();
-				file.seekp(-(sizeof(product)), ios::cur);
 				file.write((char *)&p, sizeof(p));
-			}
 			else
-			{
-				cout << "Required Product Quantity Is Not Sufficient.." << endl;
-			}
+				cout << "Insufficient Quantity!!\n";
 		}
 		else
 		{
@@ -372,11 +369,11 @@ void RemoveProduct(int serial_num)
 
 void makeSale(Item i)
 {
+	confirm_sell(i.serial, i.quantity);
 	ofstream fout;
 	fout.open("saleLedger.dat", ios::binary | ios::app);
 	if (fout)
 	{
-		confirm_sell(i.serial, i.quantity);
 		fout.write((char *)&i, sizeof(i));
 		fout.close();
 	}
@@ -392,6 +389,7 @@ void ShowLedger()
 	ifstream fin;
 	fin.open("saleLedger.dat", ios::binary);
 	Item i;
+	fin.clear();
 	fin.read((char *)&i, sizeof(i));
 	if (!fin)
 	{
@@ -400,12 +398,12 @@ void ShowLedger()
 	}
 	while (!fin.eof())
 	{
-		cout << "\n\nSale On " << i.t->tm_hour
-			 << ":" << i.t->tm_min
-			 << ":" << i.t->tm_sec
-			 << "  " << i.t->tm_mday
-			 << "-" << i.t->tm_mon
-			 << "-" << i.t->tm_year << "\n";
+		cout << "\n\nSale On " << i.t.tm_hour
+			 << ":" << i.t.tm_min
+			 << ":" << i.t.tm_sec
+			 << "  " << i.t.tm_mday
+			 << "-" << i.t.tm_mon
+			 << "-" << i.t.tm_year << "\n";
 		cout << "Item No: " << i.serial << "\n";
 		cout << "Item Name: " << i.product_name << "\n";
 		cout << "Quantity: " << i.quantity << "\n";
@@ -425,19 +423,22 @@ void showAllProducts()
 			 << endl;
 		exit(0);
 	}
-	product p;
-	cout << "Product Inventory" << endl;
-	cout << "S.No\tName\t\t\tQuantity\tGST\tTotal\t\t   Profit" << endl;
-	fin.read((char *)&p, sizeof(product));
-	while (!fin.eof())
+	else
 	{
-		cout << left << setw(8) << p.getSerialNumber()
-			 << setw(24) << p.getName() << setw(16) << p.getQuantity()
-			 << setw(8) << p.getGST() << setw(19) << fixed << setprecision(3) << p.getTotal()
-			 << p.getProfit() << endl;
+		product p;
+		cout << "Product Inventory" << endl;
+		cout << "S.No\tName\t\t\tQuantity\tGST\tTotal\t\t   Profit" << endl;
 		fin.read((char *)&p, sizeof(product));
+		while (!fin.eof())
+		{
+			cout << left << setw(8) << p.getSerialNumber()
+				 << setw(24) << p.getName() << setw(16) << p.getQuantity()
+				 << setw(8) << p.getGST() << setw(19) << fixed << setprecision(3) << p.getTotal()
+				 << p.getProfit() << endl;
+			fin.read((char *)&p, sizeof(product));
+		}
+		fin.close();
 	}
-	fin.close();
 }
 
 int AdminMenu()
@@ -445,19 +446,19 @@ int AdminMenu()
 	int ch;
 	cout << "\n\nAdministrator Menu\n1.Show All Products\n2.Add Product\n3.Edit Product\n4.Delete Product\n5.Product Detail\n6.Show Ledger\n7. Return To Main Menu\nEnter Your Choice: ";
 	cin >> ch;
-	system("CLS");
+	system("clear");
 	return ch;
 }
 
 void customerMenu()
 {
-	Item *I, i;
+	Item I;
 	ItemStack IStack;
 	product p;
-	int serial, q;
+	int serial, q, grand_total=0;
 	float total;
 	char c = 'y';
-	system("CLS");
+	system("clear");
 	showAllProducts();
 	while (c == 'y' || c == 'Y')
 	{
@@ -466,8 +467,6 @@ void customerMenu()
 		cout << "Enter Quantity: ";
 		cin >> q;
 		p = getProductBySerial(serial);
-		cout << "\n"
-			 << p.getName() << "\n";
 		if (!p.isValid())
 		{
 			cout << "Product Doesn't Exist!!";
@@ -477,22 +476,24 @@ void customerMenu()
 			cout << "\n"
 				 << p.getName() << " added to cart.\n";
 			total = p.getSellPrice() * q;
-			I = new Item(serial, p.getName(), q, total);
-			IStack.push(*I);
+			I = Item(p.getSerialNumber(), p.getName(), q, total);
+			IStack.push(I);
 		}
 		cout << "Want Add More Products(y/n): ";
 		cin >> c;
 	}
-	cout << "Out of WHile" << endl;
-	IStack.showAll();
+	cout << "\n\n*****INVOICE*****\n";
 	cout << "Sr.No\tProduct Name\t\tQuantity\tTotal" << endl;
 
 	while (IStack.top != -1)
 	{
-		i = IStack.pop();
-		cout << left << setw(8) << I->serial << setw(24) << I->product_name << setw(16) << I->quantity << I->total;
-		makeSale(i);
+		I = IStack.pop();
+		cout << left << setw(8) << I.serial << setw(24) << I.product_name << setw(16) << I.quantity << I.total << endl;
+		makeSale(I);
+		grand_total = grand_total + I.total;
 	}
+	cout<<"GRAND TOTAL: "<<grand_total<<endl;
+	cout<<"***********************************\n\n";
 }
 
 int menu()
@@ -502,7 +503,7 @@ int menu()
 	cout << "1.Admin\n2.Customer\n3.Exit\n";
 	cout << "Enter Your Choice: ";
 	cin >> ch;
-	system("CLS");
+	system("clear");
 	return ch;
 }
 
@@ -539,6 +540,7 @@ main_menu:
 					cout << "Enter Serial Number: ";
 					cin >> serial;
 					showProduct(serial);
+					break;
 				case 6:
 					ShowLedger();
 					break;
