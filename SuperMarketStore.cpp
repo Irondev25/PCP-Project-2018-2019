@@ -61,7 +61,7 @@ class product
 		cout << "Enter GST: ";
 		cin >> this->gst;
 		temp_sell_p = buy_p * ((gst * .01) + 1);
-		cout << "Enter Selling Price: (Selling Price should be greater than " << temp_sell_p << " to turn profit)";
+		cout << "Enter Selling Price (Selling Price should be greater than " << temp_sell_p << " to turn profit):";
 		cin >> this->sell_p;
 		calculate();
 	}
@@ -262,7 +262,7 @@ void EditProduct(int serial_num)
 			file.seekp(-(sizeof(product)), ios::cur);
 			p.show_product();
 			cout << "Enter the Values: " << endl;
-			cout << "Note: IF DONT WISH TO CHANGE KINDLY ENTER SAME VALUE.";
+			cout << "Note: IF DONT WISH TO CHANGE KINDLY ENTER SAME VALUE."<<endl;
 			p.get_data();
 			file.write((char *)&p, sizeof(p));
 		}
@@ -396,6 +396,7 @@ void ShowLedger()
 		cout << "Unable to open file!!!\n";
 		exit(0);
 	}
+	cout<<"\n******LEDGER******\n";
 	while (!fin.eof())
 	{
 		cout << "\n\nSale On " << i.t.tm_hour
@@ -410,6 +411,7 @@ void ShowLedger()
 		cout << "Total: " << i.total << "\n";
 		fin.read((char *)&i, sizeof(i));
 	}
+	cout<<"\n******END******\n";
 	fin.close();
 }
 
@@ -441,6 +443,30 @@ void showAllProducts()
 	}
 }
 
+void ShowAllProductCounter(){
+	ifstream fin;
+	fin.open("product.dat", ios::binary | ios::in);
+	if (!fin)
+	{
+		cout << "file not opened\n"
+			 << endl;
+		exit(0);
+	}
+	else
+	{
+		product p;
+		cout << "\nPRODUCT AVAILABLE\n" << endl;
+		cout << "Sr.No\tProduct Name\t\tQuantity\tPrice" << endl;
+		fin.read((char *)&p, sizeof(product));
+		while (!fin.eof())
+		{
+			cout << left << setw(8) << p.getSerialNumber() << setw(24) << p.getName() << setw(16) << p.getQuantity() <<fixed<<setprecision(3)<< p.getSellPrice() << endl;
+			fin.read((char *)&p, sizeof(product));
+		}
+		fin.close();
+	}
+}
+
 int AdminMenu()
 {
 	int ch;
@@ -459,7 +485,7 @@ void customerMenu()
 	float total;
 	char c = 'y';
 	system("clear");
-	showAllProducts();
+	ShowAllProductCounter();
 	while (c == 'y' || c == 'Y')
 	{
 		cout << "Enter Serial Number: ";
