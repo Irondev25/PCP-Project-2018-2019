@@ -262,7 +262,7 @@ void EditProduct(int serial_num)
 			file.seekp(-(sizeof(product)), ios::cur);
 			p.show_product();
 			cout << "Enter the Values: " << endl;
-			cout << "Note: IF DONT WISH TO CHANGE KINDLY ENTER SAME VALUE."<<endl;
+			cout << "Note: IF DONT WISH TO CHANGE KINDLY ENTER SAME VALUE." << endl;
 			p.get_data();
 			file.write((char *)&p, sizeof(p));
 		}
@@ -397,26 +397,27 @@ void ShowLedger()
 		cout << "Unable to open file!!!\n";
 		exit(0);
 	}
-	cout<<"\n******LEDGER******\n";
+	cout << "\n******LEDGER******\n";
 	while (!fin.eof())
 	{
-		if(pt.tm_mday != i.t.tm_mday){
+		if (pt.tm_mday != i.t.tm_mday)
+		{
 			cout << "\n";
 			cout << "\n\nSale On " << i.t.tm_hour
-				<< ":" << i.t.tm_min
-				<< ":" << i.t.tm_sec
-				<< "  " << i.t.tm_mday
-				<< "-" << i.t.tm_mon
-				<< "-" << i.t.tm_year << "\n\n";
+				 << ":" << i.t.tm_min
+				 << ":" << i.t.tm_sec
+				 << "  " << i.t.tm_mday
+				 << "-" << i.t.tm_mon
+				 << "-" << i.t.tm_year << "\n\n";
 			cout << "Sr.No\tProduct Name\t\tQuantity\tTotal" << endl;
 		}
-		cout << left << setw(8) << i.serial 
-			<< setw(24) << i.product_name 
-			<< setw(16) << i.quantity << i.total << "\n";
+		cout << left << setw(8) << i.serial
+			 << setw(24) << i.product_name
+			 << setw(16) << i.quantity << i.total << "\n";
 		pt = i.t;
 		fin.read((char *)&i, sizeof(i));
 	}
-	cout<<"\n******END******\n";
+	cout << "\n******END******\n";
 	fin.close();
 }
 
@@ -448,7 +449,8 @@ void showAllProducts()
 	}
 }
 
-void ShowAllProductCounter(){
+void ShowAllProductCounter()
+{
 	ifstream fin;
 	fin.open("product.dat", ios::binary | ios::in);
 	if (!fin)
@@ -460,12 +462,13 @@ void ShowAllProductCounter(){
 	else
 	{
 		product p;
-		cout << "\nPRODUCT AVAILABLE\n" << endl;
+		cout << "\nPRODUCT AVAILABLE\n"
+			 << endl;
 		cout << "Sr.No\tProduct Name\t\tQuantity\tPrice" << endl;
 		fin.read((char *)&p, sizeof(product));
 		while (!fin.eof())
 		{
-			cout << left << setw(8) << p.getSerialNumber() << setw(24) << p.getName() << setw(16) << p.getQuantity() <<fixed<<setprecision(3)<< p.getSellPrice() << endl;
+			cout << left << setw(8) << p.getSerialNumber() << setw(24) << p.getName() << setw(16) << p.getQuantity() << fixed << setprecision(3) << p.getSellPrice() << endl;
 			fin.read((char *)&p, sizeof(product));
 		}
 		fin.close();
@@ -486,7 +489,7 @@ void customerMenu()
 	Item I;
 	ItemStack IStack;
 	product p;
-	int serial, q, grand_total=0;
+	int serial, q, grand_total = 0;
 	float total;
 	char c = 'y';
 	system("clear");
@@ -523,7 +526,7 @@ void customerMenu()
 		makeSale(I);
 		grand_total = grand_total + I.total;
 	}
-	cout<<"GRAND TOTAL: "<<grand_total<<endl;
+	cout << "GRAND TOTAL: " << grand_total << endl;
 	cout << "*****************************************************\n\n";
 }
 
