@@ -386,6 +386,7 @@ void makeSale(Item i)
 
 void ShowLedger()
 {
+	tm pt = *(getTime());
 	ifstream fin;
 	fin.open("saleLedger.dat", ios::binary);
 	Item i;
@@ -399,16 +400,20 @@ void ShowLedger()
 	cout<<"\n******LEDGER******\n";
 	while (!fin.eof())
 	{
-		cout << "\n\nSale On " << i.t.tm_hour
-			 << ":" << i.t.tm_min
-			 << ":" << i.t.tm_sec
-			 << "  " << i.t.tm_mday
-			 << "-" << i.t.tm_mon
-			 << "-" << i.t.tm_year << "\n";
-		cout << "Item No: " << i.serial << "\n";
-		cout << "Item Name: " << i.product_name << "\n";
-		cout << "Quantity: " << i.quantity << "\n";
-		cout << "Total: " << i.total << "\n";
+		if(pt.tm_mday != i.t.tm_mday){
+			cout << "\n";
+			cout << "\n\nSale On " << i.t.tm_hour
+				<< ":" << i.t.tm_min
+				<< ":" << i.t.tm_sec
+				<< "  " << i.t.tm_mday
+				<< "-" << i.t.tm_mon
+				<< "-" << i.t.tm_year << "\n\n";
+			cout << "Sr.No\tProduct Name\t\tQuantity\tTotal" << endl;
+		}
+		cout << left << setw(8) << i.serial 
+			<< setw(24) << i.product_name 
+			<< setw(16) << i.quantity << i.total << "\n";
+		pt = i.t;
 		fin.read((char *)&i, sizeof(i));
 	}
 	cout<<"\n******END******\n";
@@ -508,7 +513,7 @@ void customerMenu()
 		cout << "Want Add More Products(y/n): ";
 		cin >> c;
 	}
-	cout << "\n\n*****INVOICE*****\n";
+	cout << "\n\n*********************INVOICE*************************\n";
 	cout << "Sr.No\tProduct Name\t\tQuantity\tTotal" << endl;
 
 	while (IStack.top != -1)
@@ -519,7 +524,7 @@ void customerMenu()
 		grand_total = grand_total + I.total;
 	}
 	cout<<"GRAND TOTAL: "<<grand_total<<endl;
-	cout<<"***********************************\n\n";
+	cout << "*****************************************************\n\n";
 }
 
 int menu()
