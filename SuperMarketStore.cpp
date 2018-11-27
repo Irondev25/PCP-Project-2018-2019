@@ -7,7 +7,7 @@
 
 using namespace std;
 
-string STORE_NAME = "Satram Novelity Store";
+string STORE_NAME = "SuperMart Management and Billing System";
 tm *getTime()
 {
 	time_t now = time(0);
@@ -79,6 +79,10 @@ class product
 		if (x > this->quantity)
 			return false;
 		this->quantity = this->quantity - x;
+		return true;
+	}
+	bool add_quantity(int x){
+		this->quantity+=x;
 		return true;
 	}
 	int getSerialNumber()
@@ -317,9 +321,56 @@ void confirm_sell(int serial_num, int quantity)
 	file.close();
 }
 
+void addToInventory(int serial_num)
+{
+	bool found = false;
+	int quantity;
+	fstream file;
+	product p;
+	file.open("product.dat", ios::in | ios::out | ios::binary);
+	if (!file)
+	{
+		cout << "File Not Found Exit!!\nExiting....";
+		exit(0);
+	}
+	else
+	{
+		file.read((char *)&p, sizeof(p));
+		while (!file.eof())
+		{
+			if (p.getSerialNumber() == serial_num)
+			{
+				found = true;
+				break;
+			}
+			else
+			{
+				file.read((char *)&p, sizeof(p));
+			}
+		}
+		if (found)
+		{
+			cout<<"Current Quantity: "<<p.getQuantity()<<"\n";
+			cout<<"Enter Quantity: ";
+			cin>>quantity;
+			file.clear();
+			file.seekp(-(sizeof(product)), ios::cur);
+			if (p.add_quantity(quantity))
+				file.write((char *)&p, sizeof(p));
+			cout<<"Successfully Added!!!\n";
+		}
+		else
+		{
+			cout << "Product Doesn't Exist!!!!";
+		}
+	}
+	file.close();
+}
+
 void RemoveProduct(int serial_num)
 {
 	bool found = false;
+	char c = 'y';
 	ifstream fin;
 	ofstream fout;
 	fin.open("product.dat", ios::in | ios::binary);
@@ -343,22 +394,32 @@ void RemoveProduct(int serial_num)
 		}
 		if (found)
 		{
-			fin.clear();
-			fin.seekg(0);
-			fout.open("temp.dat", ios::binary | ios::out);
-			fin.read((char *)&p, sizeof(p));
-			while (!fin.eof())
-			{
-				if (!(p.getSerialNumber() == serial_num))
-				{
-					fout.write((char *)&p, sizeof(p));
-				}
+			p.show_product();
+			cout<<"\nARE YOU SURE YOU WANT TO DELETE THIS PRODUCT(Y/N):"<<endl;
+			cin>>c;
+			if(c=='y'||c=='Y'){
+				fin.clear();
+				fin.seekg(0);
+				fout.open("temp.dat", ios::binary | ios::out);
 				fin.read((char *)&p, sizeof(p));
+				while (!fin.eof())
+				{
+					if (!(p.getSerialNumber() == serial_num))
+					{
+						fout.write((char *)&p, sizeof(p));
+					}
+					fin.read((char *)&p, sizeof(p));
+				}
+				fin.close();
+				fout.close();
+				remove("product.dat");
+				rename("temp.dat", "product.dat");
+				cout<<"\nProduct Successfully Deleted\n";
 			}
-			fin.close();
-			fout.close();
-			remove("product.dat");
-			rename("temp.dat", "product.dat");
+			else{
+				fin.close();
+				return;
+			}
 		}
 		else
 		{
@@ -384,8 +445,14 @@ void makeSale(Item i)
 	}
 }
 
+float getProfit(int serial, int quantity, float total){
+	product p = getProductBySerial(serial);
+	return total - (p.getBuyPrice()*quantity);
+}
+
 void ShowLedger()
 {
+	float total=0, profit=0;
 	tm pt = *(getTime());
 	ifstream fin;
 	fin.open("saleLedger.dat", ios::binary);
@@ -415,8 +482,18 @@ void ShowLedger()
 			 << setw(24) << i.product_name
 			 << setw(16) << i.quantity << i.total << "\n";
 		pt = i.t;
+		profit+=getProfit(i.serial, i.quantity, i.total);
+		total+=i.total;
 		fin.read((char *)&i, sizeof(i));
+		if(pt.tm_mday != i.t.tm_mday){
+			cout<<"Total Sale: "<<total<<"\n";
+			cout<<"Profit: "<<profit<<"\n";
+			total = 0;
+			profit = 0;
+		}
 	}
+	cout << "Total Sale: " << total << "\n";
+	cout << "Profit: " << profit << "\n";
 	cout << "\n******END******\n";
 	fin.close();
 }
@@ -478,7 +555,7 @@ void ShowAllProductCounter()
 int AdminMenu()
 {
 	int ch;
-	cout << "\n\nAdministrator Menu\n1.Show All Products\n2.Add Product\n3.Edit Product\n4.Delete Product\n5.Product Detail\n6.Show Ledger\n7. Return To Main Menu\nEnter Your Choice: ";
+	cout << "\n\nAdministrator Menu\n1.Show All Products\n2.Add Product\n3.Edit Product\n4.Delete Product\n5.Product Detail\n6.Add Quantity\n7.Show Ledger\n8. Return To Main Menu\nEnter Your Choice: ";
 	cin >> ch;
 	system("clear");
 	return ch;
@@ -576,9 +653,14 @@ main_menu:
 					showProduct(serial);
 					break;
 				case 6:
-					ShowLedger();
+					cout<<"\nEnter Serial Number: ";
+					cin>>serial;
+					addToInventory(serial);
 					break;
 				case 7:
+					ShowLedger();
+					break;
+				case 8:
 					goto main_menu;
 					break;
 				default:
